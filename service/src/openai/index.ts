@@ -12,14 +12,14 @@ if (!isNotEmptyString(env.OPENAI_API_KEY))
 
 const model_contexts: { [model in OpenAIAPI.Model]: TokenLimit } = {
   'gpt-4o': {
-    model_name: 'gpt-4o-2024-08-06',
+    model_name: 'gpt-4o-2024-11-20',
     max_context_tokens: Math.min(env.MAX_CONTEXT_TOKENS, 127000),
-    max_response_tokens: 4000,
+    max_response_tokens: 15000,
   },
   'gpt-4o-mini': {
     model_name: 'gpt-4o-mini-2024-07-18',
     max_context_tokens: Math.min(env.MAX_CONTEXT_TOKENS, 127000),
-    max_response_tokens: 16000,
+    max_response_tokens: 15000,
   },
 }
 
