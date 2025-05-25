@@ -75,7 +75,7 @@ export async function openaiChatCompletion(options: OpenAIAPI.RequestOptions) {
     const stream = await openai.chat.completions.create({
       model: model_name,
       messages,
-      max_tokens: max_response_tokens,
+      max_completion_tokens: max_response_tokens,
       stream: true,
       stream_options: { include_usage: true },
       temperature,
