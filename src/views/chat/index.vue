@@ -291,6 +291,8 @@ function importFile(event: Event) {
       size: file.size,
       content: base64data?.substring(stopAt + 8) ?? '',
     })
+
+    target.value = '' // Reset the file input value to allow re-uploading file with the same name
   }
   reader.onerror = (e) => {
     console.log("Error reading file:", e)
