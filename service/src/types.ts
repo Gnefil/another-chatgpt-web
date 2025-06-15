@@ -2,9 +2,14 @@ import type { OpenAIAPI } from './openai/types'
 
 export type Model = OpenAIAPI.Model
 
+export type MessageContentTypes = 
+  | { type: 'text', text: string }
+  | { type: 'image_url', image_url: { url: string } }
+  | { type: 'file', file: { file_data: string, file_name?: string } }
+
 export interface Message {
   role: 'system' | 'user' | 'assistant'
-  content: string
+  content: MessageContentTypes[]
 }
 
 export interface RequestProps {

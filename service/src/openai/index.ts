@@ -39,7 +39,19 @@ function filterMessagesByTokenCount(messages: Message[], max_tokens?: number): M
   const count_message_token = (message: Message) => {
     let tokens = tokens_per_message
     tokens += encoding.encode(message.role).length
-    tokens += encoding.encode(message.content).length
+    for (const content of message.content) {
+      if (content.type === 'text') {
+        tokens += encoding.encode(content.text).length
+      }
+      else if (content.type === 'image_url') {
+        tokens += 1000 // Rough estimate for image tokens, which is capped by 1536 when width/32*height/32 is bigger than it.
+      }
+      else if (content.type === 'file') {
+        tokens += encoding.encode(content.file.file_data).length
+        if (content.file.file_name)
+          tokens += encoding.encode(content.file.file_name).length
+      } 
+    }
     return tokens
   }
   let estimated_tokens = 3
@@ -74,7 +86,7 @@ export async function openaiChatCompletion(options: OpenAIAPI.RequestOptions) {
   try {
     const stream = await openai.chat.completions.create({
       model: model_name,
-      messages,
+      messages: messages,
       max_completion_tokens: max_response_tokens,
       stream: true,
       stream_options: { include_usage: true },
