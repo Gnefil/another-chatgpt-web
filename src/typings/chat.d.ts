@@ -39,8 +39,15 @@ declare namespace ChatData {
     mid: MID
     dateTime: string
     text: string
+    multimedia?: ChatData.MessageMultimedia[]
     inversion: boolean
     error?: boolean
+  }
+
+  interface MessageMultimedia {
+    name: string
+    type: 'image_url' | 'file'
+    contentBase64: string
   }
 }
 

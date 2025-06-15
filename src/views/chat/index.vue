@@ -139,7 +139,7 @@ async function chatProcess(cid: CID | null, index: number, usingContext: boolean
             if (openLongReply && data[data.length - 1].stop_reason === 'length') {
               lastText = text
               messages = buildContextMessages(cid, usingContext ? 0 : index - 1, index + 1)
-              messages.push({ role: 'user', content: '' })
+              messages.push({ role: 'user', content:[{ type: 'text', text: '' }] })
               return fetchChatAPIOnce()
             }
           }
@@ -189,13 +189,25 @@ async function onConversation() {
   const messageCid = cid.value
   const messageIndex = dataSources.value.length + 1
 
-  chatStore.addMessage(messageCid, prompt.value, true)
+  const multimedia: ChatData.MessageMultimedia[] = []
+  const acceptedImageTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+  for (const mediaFile of uploadedFiles.value) {
+    multimedia.push({
+      name: mediaFile.name,
+      type: acceptedImageTypes.includes(mediaFile.type) ? 'image_url' : 'file',
+      contentBase64: mediaFile.content,
+    })
+  }
+
+  chatStore.addMessage(messageCid, prompt.value, multimedia, true)
   if (chatStore.getTitle(messageCid) === t('chat.newChatTitle')) {
     generateTitle(messageCid)
   }
-  chatStore.addMessage(messageCid, t('chat.thinking'), false)
+  chatStore.addMessage(messageCid, t('chat.thinking'), [], false)
   scrollToBottom()
+
   prompt.value = ''
+  uploadedFiles.value = []
 
   await chatProcess(messageCid, messageIndex, usingContext.value)
 }
@@ -289,7 +301,7 @@ function importFile(event: Event) {
       name: file.name,
       type: type,
       size: file.size,
-      content: base64data?.substring(stopAt + 8) ?? '',
+      content: base64data ?? '', // Better including full MIME header in the base64 string
     })
 
     target.value = '' // Reset the file input value to allow re-uploading file with the same name
@@ -335,10 +347,6 @@ function handleDelayHidePopup() {
   setTimeout(() => {
     if (hideUploadedFilesSignal.value) uploadedFilesVisible.value = false
   }, 200)
-}
-
-function getFiles() {
-  return uploadedFiles.value
 }
 
 
