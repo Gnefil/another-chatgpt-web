@@ -19,36 +19,35 @@ export function buildContextMessages(cid: CID | null, startIndex?: number, endIn
     let tokens = tokens_per_message
     tokens += encoding.encode(message.role).length
     message.content.forEach((content) => {
-      if (content.type === 'text') {
+      if (content.type === 'input_text') {
         tokens += encoding.encode(content.text).length
       }
-      else if (content.type === 'image_url') {
+      else if (content.type === 'input_image') {
         tokens += 1000 // Rough estimate for image tokens, which is capped by 1536 when width/32*height/32 is bigger than it.
       }
-      else if (content.type === 'file') {
-        tokens += encoding.encode(content.file.file_data).length
-        if (content.file.file_name)
-          tokens += encoding.encode(content.file.file_name).length
+      else if (content.type === 'input_file') {
+        tokens += encoding.encode(content.filename).length
+        tokens += encoding.encode(content.file_data).length
       }
     })
     return tokens
   }
   let estimated_tokens = 3
 
-  const systemMessage: PostMessage = { role: 'system', content: [{ type: 'text', text: settingStore.systemMessage }] }
+  const systemMessage: PostMessage = { role: 'system', content: [{ type: 'input_text', text: settingStore.systemMessage }] }
   if (systemMsg)
     estimated_tokens += count_message_token(systemMessage)
 
   const messages: PostMessage[] = []
   for (let i = endIndex - 1; i >= startIndex; i--) {
     const item = sourceMessages[i]
-    const content: MessageContentTypes[] = [{ type: 'text', text: item.text }]
+    const content: MessageContentTypes[] = [{ type: 'input_text', text: item.text }]
     for (const multimedia of item.multimedia || []) {
       if (multimedia.type === 'image_url') {
-        content.push({ type: 'image_url', image_url: { url: multimedia.contentBase64 } })
+        content.push({ type: 'input_image', image_url: multimedia.contentBase64 })
       }
       else if (multimedia.type === 'file') {
-        content.push({ type: 'file', file: { file_data: multimedia.contentBase64, file_name: multimedia.name } })
+        content.push({ type: 'input_file', file_data: multimedia.contentBase64, filename: multimedia.name })
       }
     }
     if (!item.error) {
@@ -56,6 +55,8 @@ export function buildContextMessages(cid: CID | null, startIndex?: number, endIn
         role: item.inversion ? 'user' : 'assistant',
         content: content,
       }
+      if (message.role === 'assistant')
+        content[0].type = 'output_text'
       estimated_tokens += count_message_token(message)
       if (estimated_tokens > maxTokens)
         break
@@ -72,10 +73,10 @@ export async function generateTitle(cid: CID | null) {
   chatStore.setTitle(cid, t('chat.thinking'))
 
   let messages: PostMessage[] = buildContextMessages(cid, undefined, undefined, false)
-  messages.push({ role: 'system', content: [{ type: 'text', text: 'Extract keywords from above messages to generate a summary title of the conversation topic, following the language used by the user. Respond as briefly as possible (less than 10 words) and do not add heading.' }] })
+  messages.push({ role: 'system', content: [{ type: 'input_text', text: 'Extract keywords from above messages to generate a summary title of the conversation topic, following the language used by the user. Respond as briefly as possible (less than 10 words) and do not add heading.' }] })
   try {
     await fetchChatAPIProcess<ResponseChunk>({
-      model: 'gpt-4o',
+      model: 'gpt-4.1',
       messages,
       temperature: 0,
       top_p: 1,

@@ -1,6 +1,6 @@
 import env from '../utils/env'
 import OpenAI from 'openai'
-import type { CompletionUsage } from 'openai/src/resources/completions'
+import type { ResponseUsage } from 'openai/src/resources/responses/responses'
 import { get_encoding } from 'tiktoken'
 import { sendResponse } from '../utils'
 import { isNotEmptyString } from '../utils/is'
@@ -48,8 +48,8 @@ function filterMessagesByTokenCount(messages: Message[], max_tokens?: number): M
       }
       else if (content.type === 'file') {
         tokens += encoding.encode(content.file.file_data).length
-        if (content.file.file_name)
-          tokens += encoding.encode(content.file.file_name).length
+        if (content.file.filename)
+          tokens += encoding.encode(content.file.filename).length
       } 
     }
     return tokens
@@ -84,37 +84,57 @@ export async function openaiChatCompletion(options: OpenAIAPI.RequestOptions) {
   const { model_name, max_context_tokens, max_response_tokens } = model_contexts[model]
   messages = filterMessagesByTokenCount(messages, max_context_tokens - max_response_tokens)
   try {
-    const stream = await openai.chat.completions.create({
+    const stream = await openai.responses.create({
       model: model_name,
-      messages: messages,
-      max_completion_tokens: max_response_tokens,
+      // Temporarily hardcoded to test
+      input: [
+        {
+          role: "developer",
+          content: "You are a helpful assistant."
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: 'input_text',
+              text: 'Summarise what is in the file'
+            },
+            {
+              type: 'input_image',
+              image_url: 'data:image/png;base64,...'
+            },
+            {
+              type: 'input_file',
+              filename: 'random.txt',
+              file_data: 'data:text/plain;base64,TWVzc2FnZSBpcyBUd2VudHkgVGhvdXNhbmQgTWlsZXMgVW5kZXIgdGhlIFNlYS4=',
+            }
+          ]
+        }
+      ],
+      max_output_tokens: max_response_tokens,
+      store: false,
       stream: true,
-      stream_options: { include_usage: true },
       temperature,
       top_p,
     })
-    let usage: CompletionUsage
+    let usage: ResponseUsage
     for await (const chunk of stream) {
-      if (chunk.usage) {
-        usage = chunk.usage
+      if (chunk.response?.usage) {
+        usage = chunk.response.usage
         break
       }
-      let stop_reason: any = chunk.choices[0]?.finish_reason || undefined
+      let stop_reason: any = chunk.response?.error?.code || undefined
       switch (stop_reason) {
         case undefined:
-          break
-        case 'stop':
           stop_reason = 'end'
-          break
-        case 'length':
-          stop_reason = 'length'
           break
         default:
           stop_reason = 'others'
           break
       }
+      console.log(chunk.delta)
       callback({
-        delta_text: chunk.choices[0]?.delta?.content || undefined,
+        delta_text: chunk.delta || undefined,
         stop_reason: stop_reason as StopReason,
       } as ResponseChunk)
     }
@@ -122,8 +142,9 @@ export async function openaiChatCompletion(options: OpenAIAPI.RequestOptions) {
       type: 'Success', data: {
         model: model_name,
         usage: {
-          prompt_tokens: usage.prompt_tokens,
-          completion_tokens: usage.completion_tokens,
+          input_tokens: usage.input_tokens,
+          output_tokens: usage.output_tokens,
+          total_tokens: usage.total_tokens,
         } as Usage
       }
     })
