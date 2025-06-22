@@ -139,7 +139,7 @@ async function chatProcess(cid: CID | null, index: number, usingContext: boolean
             if (openLongReply && data[data.length - 1].stop_reason === 'length') {
               lastText = text
               messages = buildContextMessages(cid, usingContext ? 0 : index - 1, index + 1)
-              messages.push({ role: 'user', content:[{ type: 'text', text: '' }] })
+              messages.push({ role: 'user', content:[{ type: 'input_text', text: '' }] })
               return fetchChatAPIOnce()
             }
           }
@@ -193,6 +193,7 @@ async function onConversation() {
   const acceptedImageTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
   for (const mediaFile of uploadedFiles.value) {
     multimedia.push({
+      id: mediaFile.id,
       name: mediaFile.name,
       type: acceptedImageTypes.includes(mediaFile.type) ? 'image_url' : 'file',
       contentBase64: mediaFile.content,

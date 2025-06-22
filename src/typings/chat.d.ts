@@ -45,6 +45,7 @@ declare namespace ChatData {
   }
 
   interface MessageMultimedia {
+    id: string
     name: string
     type: 'image_url' | 'file'
     contentBase64: string

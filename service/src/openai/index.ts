@@ -40,16 +40,15 @@ function filterMessagesByTokenCount(messages: Message[], max_tokens?: number): M
     let tokens = tokens_per_message
     tokens += encoding.encode(message.role).length
     for (const content of message.content) {
-      if (content.type === 'text') {
+      if (content.type === 'input_text') {
         tokens += encoding.encode(content.text).length
       }
-      else if (content.type === 'image_url') {
+      else if (content.type === 'input_image') {
         tokens += 1000 // Rough estimate for image tokens, which is capped by 1536 when width/32*height/32 is bigger than it.
       }
-      else if (content.type === 'file') {
-        tokens += encoding.encode(content.file.file_data).length
-        if (content.file.filename)
-          tokens += encoding.encode(content.file.filename).length
+      else if (content.type === 'input_file') {
+        tokens += encoding.encode(content.filename).length
+        tokens += encoding.encode(content.file_data).length
       } 
     }
     return tokens
@@ -86,31 +85,7 @@ export async function openaiChatCompletion(options: OpenAIAPI.RequestOptions) {
   try {
     const stream = await openai.responses.create({
       model: model_name,
-      // Temporarily hardcoded to test
-      input: [
-        {
-          role: "developer",
-          content: "You are a helpful assistant."
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: 'input_text',
-              text: 'Summarise what is in the file'
-            },
-            {
-              type: 'input_image',
-              image_url: 'data:image/png;base64,...'
-            },
-            {
-              type: 'input_file',
-              filename: 'random.txt',
-              file_data: 'data:text/plain;base64,TWVzc2FnZSBpcyBUd2VudHkgVGhvdXNhbmQgTWlsZXMgVW5kZXIgdGhlIFNlYS4=',
-            }
-          ]
-        }
-      ],
+      input: messages,
       max_output_tokens: max_response_tokens,
       store: false,
       stream: true,
@@ -132,7 +107,6 @@ export async function openaiChatCompletion(options: OpenAIAPI.RequestOptions) {
           stop_reason = 'others'
           break
       }
-      console.log(chunk.delta)
       callback({
         delta_text: chunk.delta || undefined,
         stop_reason: stop_reason as StopReason,
